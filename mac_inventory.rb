@@ -58,9 +58,12 @@ def os_version
 end
 
 def processor
-  # returns cpu_type and current_processor_speed
-  [hardware_data['_items'][0]['cpu_type'],
-   hardware_data['_items'][0]['current_processor_speed']]
+  # returns of cpu_type and current_processor_speed within hash
+  processor = {}
+  processor['cpu_type'] = hardware_data['_items'][0]['cpu_type']
+  processor['processor_speed'] =
+    hardware_data['_items'][0]['current_processor_speed']
+  processor
 end
 
 def physical_memory
@@ -91,4 +94,8 @@ def inventory_hash
   inventory
 end
 
+def clean_up(enabled: TRUE)
+  Dir.glob('*.plist').each { |f| File.delete(f) } if enabled
+end
 puts inventory_hash
+clean_up
