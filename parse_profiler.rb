@@ -5,8 +5,9 @@ def parse_system_profiler(datatype: 'SPStorageDataType',
 
   output_file += '.plist' unless output_file.include? '.plist'
 
-  # save plist
-  `system_profiler -xml #{datatype} >> #{output_file}`
+  # save plist unless it already exists
+  `system_profiler -xml #{datatype} >> #{output_file}` unless
+    File.file?(output_file)
 
   # parse plist
   result = Plist.parse_xml(output_file)
