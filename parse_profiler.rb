@@ -1,18 +1,12 @@
-require 'plist'
-
-def parse_system_profiler(datatype: 'SPStorageDataType',
-                          output_file: "#{datatype}_output.plist")
-
-  output_file += '.plist' unless output_file.include? '.plist'
-
-  # save plist unless it already exists
-  `system_profiler -xml #{datatype} >> #{output_file}` unless
-    File.file?(output_file)
-
-  # parse plist
-  result = Plist.parse_xml(output_file)
-  # `rm #{output_file}`
+require 'Plist'
+def parse(datatype: 'SPHardwareDataType')
+  result = `system_profiler -xml #{datatype}`
+  result = Plist.parse_xml(result)
   result.class
   result = result[0]
   result
+end
+
+parse['_items'].each do |key|
+  puts key['physical_memory']
 end

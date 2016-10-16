@@ -1,101 +1,87 @@
-require './parse_profiler.rb'
-
-def computer_name
-  # returns ComputerName as a string
-  `scutil --get ComputerName`.strip
+begin
+  gem 'plist'
+rescue Gem::LoadError
+  `gem install plist`
 end
 
-def hardware_data
-  # returns all of SPHardwareDataType as a hash
-  parse_system_profiler(datatype: 'SPHardwareDataType')
-end
+require 'plist'
 
-def storage_data
-  # returns all of SPStorageDataType as a hash
-  parse_system_profiler(datatype: 'SPStorageDataType')
-end
-
-def software_data
-  # returns all of SPSoftwareDataType as a hash
-  parse_system_profiler(datatype: 'SPSoftwareDataType')
-end
-
-def machine_model
-  # returns machine_model, ex. MacBookPro11,1
-  hardware_data['_items'][0]['machine_model']
-end
-
-def network_interfaces
-  # returns a list of network interfaces and related data
-  parse_system_profiler(datatype: 'SPNetworkDataType')['_items']
-end
-
-def mac_addresses(all_interfaces: FALSE)
-  interfaces = {}
-  network_interfaces.each do |interface|
-    # each interface from 'SPNetworkDataType'[_items]
-    begin
-      interfaces[interface['_name']] = interface['Ethernet']['MAC Address']
-    rescue
-      # if the interface does not have a MAC address
-      interfaces[interface['_name']] = 'empty' if all_interfaces
-      # skips interfaces that don't have a MAC address if all_interfaces = FALSE
-      next
-    end
+# stuff
+class Inventory
+  def parse(datatype: 'SPStorageDataType')
+    result = `system_profiler -xml #{datatype}`
+    result = Plist.parse_xml(result)
+    result.class
+    result = result[0]
+    result
   end
-  # returns hash of interfaces by name with val of MAC Address, if it exists
-  interfaces
+
+  def initialize
+    @root_data = {
+      'SPHardwareDataType' => parse(datatype: 'SPHardwareDataType'),
+      'SPStorageDataType' => parse(datatype: 'SPStorageDataType'),
+      'SPSoftwareDataType' => parse(datatype: 'SPSoftwareDataType'),
+      'SPNetworkDataType' => parse(datatype: 'SPNetworkDataType')
+    }
+    @data = {}
+  end
+
+  def hardware_facts
+    cpu_type = @root_data['SPHardwareDataType']['_items'][0]['cpu_type']
+    processor_speed =
+      @root_data['SPHardwareDataType']['_items'][0]['current_processor_speed']
+
+    @data = {
+      'computer_name' => `scutil --get ComputerName`.strip,
+      'machine_model' => @root_data['SPHardwareDataType']['_items'][0]['machine_model'],
+      'serial_number' => @root_data['SPHardwareDataType']['_items'][0]['serial_number'],
+      'physical_memory' =>
+        @root_data['SPHardwareDataType']['_items'][0]['physical_memory'],
+
+      'processor' => {
+        'cpu_type' => cpu_type,
+        'processor_speed' => processor_speed
+      }
+
+    }
+  end
+
+  def gather
+    hardware_facts
+    software_facts
+    mac_addresses
+    storage_facts
+  end
+
+  def software_facts
+    @data['os_version'] = @root_data['SPSoftwareDataType']['_items'][0]['os_version']
+  end
+
+  def storage_facts
+    @data['volume_name'] = @root_data['SPStorageDataType']['_items'][0]['_name']
+  end
+
+  def mac_addresses(all_interfaces: FALSE)
+    interfaces = {}
+    @root_data['SPNetworkDataType']['_items'].each do |interface|
+      begin
+        interfaces[interface['_name']] = interface['Ethernet']['MAC Address']
+      rescue
+        # if the interface does not have a MAC address
+        # skips interfaces that don't have a MAC address if all_interfaces = FALSE
+        interfaces[interface['_name']] = 'empty' if all_interfaces
+        next
+      end
+    end
+    # returns hash of interfaces by name with val of MAC Address, if it exists
+    @data['network_interfaces'] = interfaces
+  end
+
+  def hash
+    @data
+  end
 end
 
-def serial_number
-  # returns machine serial_number
-  hardware_data['_items'][0]['serial_number']
-end
-
-def os_version
-  # returns os_version
-  software_data['_items'][0]['os_version']
-end
-
-def processor
-  # returns of cpu_type and current_processor_speed within hash
-  processor = {}
-  processor['cpu_type'] = hardware_data['_items'][0]['cpu_type']
-  processor['processor_speed'] =
-    hardware_data['_items'][0]['current_processor_speed']
-  processor
-end
-
-def physical_memory
-  # returns physical_memory
-  hardware_data['_items'][0]['physical_memory']
-end
-
-def volume_name
-  # returns volume_name
-  storage_data['_items'][0]['_name']
-end
-
-def disk_space
-  storage_data['_items'][0]
-end
-
-def inventory_hash
-  inventory = {}
-  inventory['computer_name'] = computer_name
-  inventory['machine_model'] = machine_model
-  inventory['network_interfaces'] = mac_addresses
-  inventory['serial_number'] = serial_number
-  inventory['os_version'] = os_version
-  inventory['processor'] = processor
-  inventory['physical_memory'] = physical_memory
-  inventory['volume_name'] = volume_name
-  # add disk space info
-  inventory
-end
-
-def clean_up(enabled: TRUE)
-  Dir.glob('*.plist').each { |f| File.delete(f) } if enabled
-end
-puts inventory_hash
-clean_up
+inventory = Inventory.new
+inventory.gather
+puts inventory.hash
