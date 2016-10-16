@@ -26,6 +26,13 @@ class Inventory
     @data = {}
   end
 
+  def gather
+    hardware_facts
+    software_facts
+    mac_addresses
+    storage_facts
+  end
+
   def hardware_facts
     cpu_type = @root_data['SPHardwareDataType']['_items'][0]['cpu_type']
     processor_speed =
@@ -46,19 +53,8 @@ class Inventory
     }
   end
 
-  def gather
-    hardware_facts
-    software_facts
-    mac_addresses
-    storage_facts
-  end
-
   def software_facts
     @data['os_version'] = @root_data['SPSoftwareDataType']['_items'][0]['os_version']
-  end
-
-  def storage_facts
-    @data['volume_name'] = @root_data['SPStorageDataType']['_items'][0]['_name']
   end
 
   def mac_addresses(all_interfaces: FALSE)
@@ -75,6 +71,10 @@ class Inventory
     end
     # returns hash of interfaces by name with val of MAC Address, if it exists
     @data['network_interfaces'] = interfaces
+  end
+
+  def storage_facts
+    @data['volume_name'] = @root_data['SPStorageDataType']['_items'][0]['_name']
   end
 
   def hash
