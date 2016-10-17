@@ -41,6 +41,7 @@ class Inventory
     @data = {
       'computer_name' => `scutil --get ComputerName`.strip,
       'machine_model' => @root_data['SPHardwareDataType']['_items'][0]['machine_model'],
+      'screen_size' => `python screen_size.py`.strip,
       'serial_number' => @root_data['SPHardwareDataType']['_items'][0]['serial_number'],
       'physical_memory' =>
         @root_data['SPHardwareDataType']['_items'][0]['physical_memory'],
@@ -51,6 +52,7 @@ class Inventory
       }
 
     }
+
   end
 
   def software_facts
@@ -81,6 +83,8 @@ class Inventory
     @data
   end
 end
+
+
 
 inventory = Inventory.new
 inventory.gather
