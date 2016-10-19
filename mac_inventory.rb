@@ -1,9 +1,3 @@
-begin
-  gem 'plist'
-rescue Gem::LoadError
-  `gem install plist`
-end
-
 require 'plist'
 
 # stuff
@@ -34,25 +28,28 @@ class Inventory
   end
 
   def hardware_facts
-    cpu_type = @root_data['SPHardwareDataType']['_items'][0]['cpu_type']
-    processor_speed =
-      @root_data['SPHardwareDataType']['_items'][0]['current_processor_speed']
-
     @data = {
       'computer_name' => `scutil --get ComputerName`.strip,
       'machine_model' => @root_data['SPHardwareDataType']['_items'][0]['machine_model'],
       'screen_size' => `python screen_size.py`.strip,
-      'serial_number' => @root_data['SPHardwareDataType']['_items'][0]['serial_number'],
+      'serial_number' => @root_data['SPHardwareDataType']['_items'][0]['serial_number']
+    }
+    hardware_specs
+
+  end
+
+  def hardware_specs
+    cpu_type = @root_data['SPHardwareDataType']['_items'][0]['cpu_type']
+    processor_speed =
+      @root_data['SPHardwareDataType']['_items'][0]['current_processor_speed']
+    @data = {
       'physical_memory' =>
         @root_data['SPHardwareDataType']['_items'][0]['physical_memory'],
-
       'processor' => {
         'cpu_type' => cpu_type,
         'processor_speed' => processor_speed
       }
-
     }
-
   end
 
   def software_facts
@@ -83,8 +80,6 @@ class Inventory
     @data
   end
 end
-
-
 
 inventory = Inventory.new
 inventory.gather
