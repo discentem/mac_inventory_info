@@ -11,8 +11,8 @@ class Inventory
   end
 
   def initialize
-    @data = {}
-    @root_data = {
+    @hash = {}
+    @xml_data = {
       'SPHardwareDataType' => parse(datatype: 'SPHardwareDataType'),
       'SPStorageDataType' => parse(datatype: 'SPStorageDataType'),
       'SPSoftwareDataType' => parse(datatype: 'SPSoftwareDataType'),
@@ -21,38 +21,29 @@ class Inventory
   end
 
   def gather
-    hardware_facts
-    hardware_specs
-    software_facts
-    mac_addresses
-    storage_facts
-  end
+    @hash['computer_name'] = `scutil --get ComputerName`.strip
+    @hash['machine_model'] = @xml_data['SPHardwareDataType']['_items'][0]['machine_model']
+    @hash['screen_size'] = `python screen_size.py`.strip
+    @hash['serial_number'] = @xml_data['SPHardwareDataType']['_items'][0]['serial_number']
 
-  def hardware_facts
-    @data['computer_name'] = `scutil --get ComputerName`.strip
-    @data['machine_model'] = @root_data['SPHardwareDataType']['_items'][0]['machine_model']
-    @data['screen_size'] = `python screen_size.py`.strip
-    @data['serial_number'] = @root_data['SPHardwareDataType']['_items'][0]['serial_number']
+    @hash['physical_memory'] =
+      @xml_data['SPHardwareDataType']['_items'][0]['physical_memory']
 
-  end
-
-  def hardware_specs
-    @data['physical_memory'] =
-      @root_data['SPHardwareDataType']['_items'][0]['physical_memory']
-    @data['processor'] = {
-      'cpu_type' => @root_data['SPHardwareDataType']['_items'][0]['cpu_type'],
+    @hash['processor'] = {
+      'cpu_type' => @xml_data['SPHardwareDataType']['_items'][0]['cpu_type'],
       'processor_speed' =>
-        @root_data['SPHardwareDataType']['_items'][0]['current_processor_speed']
+        @xml_data['SPHardwareDataType']['_items'][0]['current_processor_speed']
     }
-  end
 
-  def software_facts
-    @data['os_version'] = @root_data['SPSoftwareDataType']['_items'][0]['os_version']
+    @hash['os_version'] = @xml_data['SPSoftwareDataType']['_items'][0]['os_version']
+    @hash['mac_addresses'] = mac_addresses
+
+    @hash['volume_name'] = @xml_data['SPStorageDataType']['_items'][0]['_name']
   end
 
   def mac_addresses(all_interfaces: FALSE)
     interfaces = {}
-    @root_data['SPNetworkDataType']['_items'].each do |interface|
+    @xml_data['SPNetworkDataType']['_items'].each do |interface|
       begin
         interfaces[interface['_name']] = interface['Ethernet']['MAC Address']
       rescue
@@ -63,18 +54,14 @@ class Inventory
       end
     end
     # returns hash of interfaces by name with val of MAC Address, if it exists
-    @data['network_interfaces'] = interfaces
+    interfaces
   end
 
-  def storage_facts
-    @data['volume_name'] = @root_data['SPStorageDataType']['_items'][0]['_name']
-  end
-
-  def hash
-    @data
+  def show
+    @hash
   end
 end
 
 inventory = Inventory.new
 inventory.gather
-puts inventory.hash
+puts inventory.show
