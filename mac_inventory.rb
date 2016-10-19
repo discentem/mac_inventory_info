@@ -11,44 +11,38 @@ class Inventory
   end
 
   def initialize
+    @data = {}
     @root_data = {
       'SPHardwareDataType' => parse(datatype: 'SPHardwareDataType'),
       'SPStorageDataType' => parse(datatype: 'SPStorageDataType'),
       'SPSoftwareDataType' => parse(datatype: 'SPSoftwareDataType'),
       'SPNetworkDataType' => parse(datatype: 'SPNetworkDataType')
     }
-    @data = {}
   end
 
   def gather
     hardware_facts
+    hardware_specs
     software_facts
     mac_addresses
     storage_facts
   end
 
   def hardware_facts
-    @data = {
-      'computer_name' => `scutil --get ComputerName`.strip,
-      'machine_model' => @root_data['SPHardwareDataType']['_items'][0]['machine_model'],
-      'screen_size' => `python screen_size.py`.strip,
-      'serial_number' => @root_data['SPHardwareDataType']['_items'][0]['serial_number']
-    }
-    hardware_specs
+    @data['computer_name'] = `scutil --get ComputerName`.strip
+    @data['machine_model'] = @root_data['SPHardwareDataType']['_items'][0]['machine_model']
+    @data['screen_size'] = `python screen_size.py`.strip
+    @data['serial_number'] = @root_data['SPHardwareDataType']['_items'][0]['serial_number']
 
   end
 
   def hardware_specs
-    cpu_type = @root_data['SPHardwareDataType']['_items'][0]['cpu_type']
-    processor_speed =
-      @root_data['SPHardwareDataType']['_items'][0]['current_processor_speed']
-    @data = {
-      'physical_memory' =>
-        @root_data['SPHardwareDataType']['_items'][0]['physical_memory'],
-      'processor' => {
-        'cpu_type' => cpu_type,
-        'processor_speed' => processor_speed
-      }
+    @data['physical_memory'] =
+      @root_data['SPHardwareDataType']['_items'][0]['physical_memory']
+    @data['processor'] = {
+      'cpu_type' => @root_data['SPHardwareDataType']['_items'][0]['cpu_type'],
+      'processor_speed' =>
+        @root_data['SPHardwareDataType']['_items'][0]['current_processor_speed']
     }
   end
 
